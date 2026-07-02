@@ -5,7 +5,10 @@ on:
     # 21:30 UTC = 06:30 JST
     - cron: "30 21 * * *"
   workflow_dispatch: {}
-
+# 同じワークフローの多重実行を防ぎ、pushの競合(non-fast-forward)を避ける
+concurrency:
+  group: dashboard-update
+  cancel-in-progress: false
 permissions:
   contents: write
 
