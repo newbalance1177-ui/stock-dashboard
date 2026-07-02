@@ -27,6 +27,8 @@ def main() -> None:
 
         message = f"Automated update: {date.today().isoformat()}"
         run("git", "commit", "-m", message)
+        # push前にリモートの最新変更を取り込む(同時実行等でリモートが進んでいた場合の保険)
+        run("git", "pull", "--rebase", "origin", "main")
         run("git", "push")
         print(f"[deploy] pushed: {message}")
     except subprocess.CalledProcessError as exc:
