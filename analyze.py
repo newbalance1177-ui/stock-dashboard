@@ -61,7 +61,10 @@ def main() -> None:
     try:
         comment = generate_analysis()
     except Exception as exc:  # noqa: BLE001
-        print(f"[analyze] failed to generate analysis: {exc}", file=sys.stderr)
+        print(
+            f"[analyze] failed to generate analysis: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     today = date.today().isoformat()
