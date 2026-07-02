@@ -1,0 +1,18 @@
+# 環境変数(APIキー等) — 絶対にコミットしない
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code ローカル設定
+.claude/

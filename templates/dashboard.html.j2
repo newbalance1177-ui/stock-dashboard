@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マーケットダッシュボード - {{ generated_at }}</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; background: #f7f7f8; color: #1a1a1a; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  .meta { color: #666; font-size: 0.85rem; }
+  .card { background: #fff; border-radius: 8px; padding: 1.2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+  .chart img { max-width: 100%; height: auto; }
+  .comment { white-space: pre-wrap; line-height: 1.7; }
+  .posts { list-style: none; padding: 0; }
+  .posts li { padding: 0.6rem 0; border-bottom: 1px solid #eee; }
+  .posts a { color: #666; font-size: 0.8rem; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1>マーケットダッシュボード</h1>
+  <p class="meta">生成日時: {{ generated_at }}</p>
+
+  <div class="card">
+    <h2>分析コメント</h2>
+    {% if analysis %}
+      <p class="meta">{{ analysis.analysis_date }} ({{ analysis.model }})</p>
+      <p class="comment">{{ analysis.comment }}</p>
+    {% else %}
+      <p>まだ分析結果がありません。analyze.py を実行してください。</p>
+    {% endif %}
+  </div>
+
+  {% for chart in charts %}
+  <div class="card chart">
+    <h2>{{ chart.title }}</h2>
+    <img src="{{ chart.filename }}" alt="{{ chart.title }}">
+  </div>
+  {% endfor %}
+
+  <div class="card">
+    <h2>直近のXの投稿</h2>
+    {% if posts %}
+    <ul class="posts">
+      {% for post in posts %}
+      <li>
+        <div>@{{ post.username }}: {{ post.text }}</div>
+        <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.created_at }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>投稿がありません。</p>
+    {% endif %}
+  </div>
+</body>
+</html>
