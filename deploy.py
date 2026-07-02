@@ -1,9 +1,12 @@
 """生成物(DB・ダッシュボード)を git commit & push する。"""
 import subprocess
 import sys
+import time
 from datetime import date
 
 from config import BASE_DIR
+
+MAX_PUSH_ATTEMPTS = 3
 
 
 def run(*args: str) -> subprocess.CompletedProcess:
@@ -17,6 +20,23 @@ def has_changes() -> bool:
     return bool(result.stdout.strip())
 
 
+def push_with_retry() -> None:
+    # 同時実行等でリモートが進んでいた場合に備え、pull --rebase + push を数回リトライする
+    for attempt in range(1, MAX_PUSH_ATTEMPTS + 1):
+        try:
+            run("git", "pull", "--rebase", "origin", "main")
+            run("git", "push", "origin", "HEAD:main")
+            return
+        except subprocess.CalledProcessError as exc:
+            if attempt == MAX_PUSH_ATTEMPTS:
+                raise
+            print(
+                f"[deploy] push attempt {attempt} failed, retrying: {exc.stderr}",
+                file=sys.stderr,
+            )
+            time.sleep(3)
+
+
 def main() -> None:
     try:
         run("git", "add", "data", "output")
@@ -27,9 +47,7 @@ def main() -> None:
 
         message = f"Automated update: {date.today().isoformat()}"
         run("git", "commit", "-m", message)
-        # push前にリモートの最新変更を取り込む(同時実行等でリモートが進んでいた場合の保険)
-        run("git", "pull", "--rebase", "origin", "main")
-        run("git", "push")
+        push_with_retry()
         print(f"[deploy] pushed: {message}")
     except subprocess.CalledProcessError as exc:
         print(f"[deploy] git command failed: {exc.stderr}", file=sys.stderr)
