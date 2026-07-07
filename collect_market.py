@@ -6,7 +6,7 @@ import requests
 import yfinance as yf
 
 import db
-from config import JP_HEATMAP_STOCKS, MARKET_TICKERS, US_HEATMAP_STOCKS
+from config import JP_HEATMAP_STOCKS, MARKET_TICKERS, THEME_STOCKS, US_HEATMAP_STOCKS
 
 # ブラウザ以外からのアクセスを弾くサイト対策として付与するヘッダー
 BROWSER_HEADERS = {
@@ -109,6 +109,23 @@ def collect_stock_heatmap(market: str, stocks: list[tuple[str, str, float]]) -> 
     return count
 
 
+def collect_theme_stocks(period: str = "3mo") -> int:
+    """注目テーマ株(THEME_STOCKS)の株価推移を一括取得し、market_dataへ保存する(symbol=ティッカー)。"""
+    tickers = sorted({ticker for stocks in THEME_STOCKS.values() for ticker, _name in stocks})
+    data = yf.download(tickers, period=period, group_by="ticker", progress=False, threads=True)
+
+    count = 0
+    for ticker in tickers:
+        try:
+            closes = data[ticker]["Close"].dropna()
+        except (KeyError, TypeError):
+            continue
+        for date, close in closes.items():
+            db.upsert_market_point(symbol=ticker, date=date.strftime("%Y-%m-%d"), close=float(close))
+            count += 1
+    return count
+
+
 def main() -> None:
     db.init_db()
 
@@ -139,6 +156,12 @@ def main() -> None:
         print(f"[collect_market] US stock heatmap: {count} ticker(s) upserted")
     except Exception as exc:  # noqa: BLE001
         print(f"[collect_market] US stock heatmap failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    try:
+        count = collect_theme_stocks()
+        print(f"[collect_market] theme stocks: {count} point(s) upserted")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[collect_market] theme stocks failed: {type(exc).__name__}: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":

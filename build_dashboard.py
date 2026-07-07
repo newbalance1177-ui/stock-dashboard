@@ -18,6 +18,7 @@ from config import (
     INDICATOR_LABELS,
     JP_HEATMAP_STOCKS,
     OUTPUT_DIR,
+    THEME_STOCKS,
     US_HEATMAP_STOCKS,
 )
 
@@ -127,6 +128,57 @@ def render_stock_treemap(market: str, stocks: list[tuple[str, str, float]], titl
     return filename
 
 
+def render_sparkline(ticker: str, is_up: bool) -> str | None:
+    """テーマ株カード用の小さな推移グラフ(スパークライン)を生成する。
+    色は前日比(is_up)に合わせる(隣の騰落率セルと同じ判定基準にするため)。"""
+    rows = db.get_recent_market(ticker, days=30)
+    if len(rows) < 2:
+        return None
+
+    closes = [row["close"] for row in rows]
+    color = "#e34948" if is_up else "#2a78d6"  # 赤=上昇/青=下落
+
+    fig, ax = plt.subplots(figsize=(2.4, 0.6))
+    ax.plot(closes, color=color, linewidth=1.6)
+    ax.axis("off")
+    fig.tight_layout(pad=0.1)
+
+    CHARTS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"spark_{ticker.replace('.', '_')}.png"
+    fig.savefig(CHARTS_DIR / filename, dpi=100, transparent=True)
+    plt.close(fig)
+    return filename
+
+
+def build_theme_data() -> list[dict]:
+    """注目テーマごとに、対象銘柄の現在株価・前日比・推移スパークラインをまとめる。"""
+    themes = []
+    for theme_name, stocks in THEME_STOCKS.items():
+        companies = []
+        for ticker, name in stocks:
+            rows = db.get_recent_market(ticker, days=30)
+            if len(rows) < 2:
+                continue
+            latest, prev = rows[-1], rows[-2]
+            pct_change = (
+                (latest["close"] - prev["close"]) / prev["close"] * 100
+                if prev["close"] else 0.0
+            )
+            spark_filename = render_sparkline(ticker, pct_change >= 0)
+            companies.append(
+                {
+                    "name": name,
+                    "price": latest["close"],
+                    "date": latest["date"],
+                    "pct_change": pct_change,
+                    "sparkline": f"charts/{spark_filename}" if spark_filename else None,
+                }
+            )
+        if companies:
+            themes.append({"name": theme_name, "companies": companies})
+    return themes
+
+
 def compute_alerts() -> list[dict]:
     alerts = []
     for symbol, rule in ALERT_THRESHOLDS.items():
@@ -165,6 +217,7 @@ def main() -> None:
 
     jp_treemap = render_stock_treemap("japan", JP_HEATMAP_STOCKS, "日本 銘柄別ヒートマップ(直近1日)")
     us_treemap = render_stock_treemap("us", US_HEATMAP_STOCKS, "アメリカ 銘柄別ヒートマップ(直近1日)")
+    themes = build_theme_data()
 
     alerts = compute_alerts()
     analysis = db.get_latest_analysis()
@@ -180,6 +233,7 @@ def main() -> None:
         alerts=alerts,
         jp_treemap=f"charts/{jp_treemap}" if jp_treemap else None,
         us_treemap=f"charts/{us_treemap}" if us_treemap else None,
+        themes=themes,
     )
 
     output_path = OUTPUT_DIR / "index.html"
