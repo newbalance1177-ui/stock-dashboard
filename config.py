@@ -28,7 +28,15 @@ X_TARGET_USERNAMES = [
 MARKET_TICKERS = {
     "nikkei225": "^N225",
     "usdjpy": "JPY=X",
+    "sp500": "^GSPC",  # 日米比較ヒートマップ用。個別の推移グラフは出さない(INDICATOR_LABELSに含めない)
 }
+
+# 日本・アメリカの実績比較ヒートマップに表示する指標(symbol, 表示名)
+HEATMAP_SERIES = [
+    ("nikkei225", "日本(日経平均)"),
+    ("sp500", "米国(S&P500)"),
+]
+HEATMAP_DAYS = 10  # 直近何営業日分を表示するか
 
 # ダッシュボード・分析プロンプトで表示する全指標の名称(yfinance以外のnikkei_vi/fear_greedも含む)
 INDICATOR_LABELS = {

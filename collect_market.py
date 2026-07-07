@@ -22,7 +22,7 @@ NIKKEI_VI_CSV_URL = (
 FEAR_GREED_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 
 
-def collect_symbol(name: str, ticker: str, period: str = "5d") -> int:
+def collect_symbol(name: str, ticker: str, period: str = "3mo") -> int:
     hist = yf.Ticker(ticker).history(period=period)
     if hist.empty:
         print(f"[collect_market] no data for {name} ({ticker})", file=sys.stderr)

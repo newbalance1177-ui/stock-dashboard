@@ -47,6 +47,13 @@
     {% endif %}
   </div>
 
+  {% if heatmap %}
+  <div class="card chart">
+    <h2>日本・アメリカの直近の実績</h2>
+    <img src="{{ heatmap }}" alt="日本・アメリカ 直近の騰落率ヒートマップ">
+  </div>
+  {% endif %}
+
   {% for chart in charts %}
   <div class="card chart">
     <h2>{{ chart.title }}</h2>
