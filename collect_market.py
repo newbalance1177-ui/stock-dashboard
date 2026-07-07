@@ -6,7 +6,7 @@ import requests
 import yfinance as yf
 
 import db
-from config import MARKET_TICKERS
+from config import JP_HEATMAP_STOCKS, MARKET_TICKERS, US_HEATMAP_STOCKS
 
 # ブラウザ以外からのアクセスを弾くサイト対策として付与するヘッダー
 BROWSER_HEADERS = {
@@ -81,6 +81,34 @@ def collect_fear_greed(days: int = 90) -> int:
     return count
 
 
+def collect_stock_heatmap(market: str, stocks: list[tuple[str, str, float]]) -> int:
+    """複数銘柄の株価を一括取得(yf.downloadでまとめて1回)し、直近1日の変化率をDBへ保存する。"""
+    tickers = [ticker for ticker, _name, _weight in stocks]
+    data = yf.download(
+        tickers, period="5d", group_by="ticker", progress=False, threads=True
+    )
+
+    count = 0
+    for ticker, name, _weight in stocks:
+        try:
+            closes = data[ticker]["Close"].dropna()
+        except (KeyError, TypeError):
+            continue
+        if len(closes) < 2:
+            continue
+        latest_date = closes.index[-1].strftime("%Y-%m-%d")
+        prev_close = float(closes.iloc[-2])
+        latest_close = float(closes.iloc[-1])
+        if prev_close == 0:
+            continue
+        pct_change = (latest_close - prev_close) / prev_close * 100
+        db.upsert_stock_change(
+            ticker=ticker, market=market, name=name, date=latest_date, pct_change=pct_change
+        )
+        count += 1
+    return count
+
+
 def main() -> None:
     db.init_db()
 
@@ -99,6 +127,18 @@ def main() -> None:
         print(f"[collect_market] fear_greed: {count} point(s) upserted")
     except Exception as exc:  # noqa: BLE001
         print(f"[collect_market] fear_greed failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    try:
+        count = collect_stock_heatmap("japan", JP_HEATMAP_STOCKS)
+        print(f"[collect_market] JP stock heatmap: {count} ticker(s) upserted")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[collect_market] JP stock heatmap failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    try:
+        count = collect_stock_heatmap("us", US_HEATMAP_STOCKS)
+        print(f"[collect_market] US stock heatmap: {count} ticker(s) upserted")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[collect_market] US stock heatmap failed: {type(exc).__name__}: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":

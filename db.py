@@ -35,6 +35,16 @@ CREATE TABLE IF NOT EXISTS analysis (
     model TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS stock_changes (
+    ticker TEXT NOT NULL,
+    market TEXT NOT NULL,
+    name TEXT NOT NULL,
+    date TEXT NOT NULL,
+    pct_change REAL,
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (ticker, date)
+);
 """
 
 
@@ -145,6 +155,35 @@ def get_latest_analysis():
         return conn.execute(
             "SELECT * FROM analysis ORDER BY created_at DESC LIMIT 1"
         ).fetchone()
+
+
+# --- stock_changes (銘柄別ヒートマップ用) ---
+
+def upsert_stock_change(ticker: str, market: str, name: str, date: str, pct_change: float) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO stock_changes (ticker, market, name, date, pct_change, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(ticker, date) DO UPDATE SET
+                pct_change = excluded.pct_change, fetched_at = excluded.fetched_at
+            """,
+            (ticker, market, name, date, pct_change, now_iso()),
+        )
+
+
+def get_latest_stock_changes(market: str):
+    """指定マーケットについて、DBに保存されている最新日付の全銘柄の変化率を返す。"""
+    with get_connection() as conn:
+        latest = conn.execute(
+            "SELECT MAX(date) AS d FROM stock_changes WHERE market = ?", (market,)
+        ).fetchone()
+        if not latest or not latest["d"]:
+            return []
+        return conn.execute(
+            "SELECT * FROM stock_changes WHERE market = ? AND date = ? ORDER BY ticker",
+            (market, latest["d"]),
+        ).fetchall()
 
 
 if __name__ == "__main__":

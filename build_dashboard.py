@@ -3,7 +3,7 @@ from datetime import datetime
 
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
+import squarify
 from jinja2 import Environment, FileSystemLoader
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -15,17 +15,17 @@ import db
 from config import (
     ALERT_THRESHOLDS,
     BASE_DIR,
-    HEATMAP_DAYS,
-    HEATMAP_SERIES,
     INDICATOR_LABELS,
+    JP_HEATMAP_STOCKS,
     OUTPUT_DIR,
+    US_HEATMAP_STOCKS,
 )
 
 CHARTS_DIR = OUTPUT_DIR / "charts"
 
 # 青(下落)↔グレー(0%)↔赤(上昇)。日本の市場慣習(赤=上昇/青=下落)に合わせた配色。
 HEATMAP_CMAP = LinearSegmentedColormap.from_list(
-    "jp_us_performance", ["#2a78d6", "#f0efec", "#e34948"]
+    "stock_performance", ["#2a78d6", "#f0efec", "#e34948"]
 )
 
 
@@ -69,66 +69,59 @@ def render_chart(symbol: str) -> dict | None:
     }
 
 
-def daily_pct_changes(symbol: str, days: int) -> list[float]:
-    """直近days営業日分の前日比(%)を古い順で返す。休場日を考慮し余裕を持って取得する。"""
-    rows = db.get_recent_market(symbol, days=days + 20)
-    if len(rows) < 2:
-        return []
-    changes = []
-    for prev, curr in zip(rows, rows[1:]):
-        if prev["close"]:
-            changes.append((curr["close"] - prev["close"]) / prev["close"] * 100)
-    return changes[-days:]
-
-
-def render_performance_heatmap() -> str | None:
-    row_labels = []
-    grid_rows = []
-    for symbol, label in HEATMAP_SERIES:
-        changes = daily_pct_changes(symbol, HEATMAP_DAYS)
-        if not changes:
-            continue
-        row_labels.append(label)
-        # 行ごとにデータ数が違っても比較できるよう、右詰め(直近側)で揃える
-        padded = [np.nan] * (HEATMAP_DAYS - len(changes)) + changes
-        grid_rows.append(padded)
-
-    if not grid_rows:
+def render_stock_treemap(market: str, stocks: list[tuple[str, str, float]], title: str) -> str | None:
+    """SBI証券アプリ風の、銘柄別・時価総額サイズのツリーマップ(直近1日の騰落率)を生成する。"""
+    rows = db.get_latest_stock_changes(market)
+    if not rows:
         return None
 
-    grid = np.array(grid_rows, dtype=float)
-    vmax = np.nanmax(np.abs(grid))
-    vmax = vmax if vmax > 0 else 1.0
+    changes_by_ticker = {row["ticker"]: row["pct_change"] for row in rows}
+    items = [
+        {"name": name, "weight": weight, "pct": changes_by_ticker[ticker]}
+        for ticker, name, weight in stocks
+        if ticker in changes_by_ticker
+    ]
+    if not items:
+        return None
 
-    fig, ax = plt.subplots(figsize=(8, 1.4 + 0.7 * len(row_labels)))
-    im = ax.imshow(grid, cmap=HEATMAP_CMAP, vmin=-vmax, vmax=vmax, aspect="auto")
+    # 面積が大きい順に並べるとsquarifyのレイアウトが安定する
+    items.sort(key=lambda item: item["weight"], reverse=True)
+    sizes = squarify.normalize_sizes([item["weight"] for item in items], 100, 100)
+    rects = squarify.squarify(sizes, 0, 0, 100, 100)
 
-    ax.set_yticks(range(len(row_labels)))
-    ax.set_yticklabels(row_labels)
-    ax.set_xticks(range(HEATMAP_DAYS))
-    ax.set_xticklabels(
-        [f"{HEATMAP_DAYS - 1 - i}営業日前" if i < HEATMAP_DAYS - 1 else "直近"
-         for i in range(HEATMAP_DAYS)],
-        rotation=45, ha="right", fontsize=8,
-    )
-    ax.set_title("日本・アメリカ 直近の騰落率(前日比%)")
+    vmax = max(abs(item["pct"]) for item in items) or 1.0
 
-    # セルごとに数値を直接表示し、背景色の明暗に応じて文字色を白/濃色で切り替える
-    for i in range(grid.shape[0]):
-        for j in range(grid.shape[1]):
-            value = grid[i, j]
-            if np.isnan(value):
-                continue
-            rgba = im.cmap(im.norm(value))
-            luminance = 0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]
-            text_color = "white" if luminance < 0.5 else "#0b0b0b"
-            ax.text(j, i, f"{value:+.1f}%", ha="center", va="center", fontsize=8, color=text_color)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for rect, item in zip(rects, items):
+        norm_value = (item["pct"] + vmax) / (2 * vmax)  # -vmax..vmax -> 0..1
+        color = HEATMAP_CMAP(norm_value)
+        ax.add_patch(
+            plt.Rectangle(
+                (rect["x"], rect["y"]), rect["dx"], rect["dy"],
+                facecolor=color, edgecolor="#fcfcfb", linewidth=2,
+            )
+        )
 
-    fig.colorbar(im, ax=ax, orientation="horizontal", fraction=0.1, pad=0.45, label="前日比(%)")
+        # 小さすぎる箱は文字が読めないためラベルを省略する
+        if rect["dx"] < 6 or rect["dy"] < 5:
+            continue
+        luminance = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+        text_color = "white" if luminance < 0.5 else "#0b0b0b"
+        cx, cy = rect["x"] + rect["dx"] / 2, rect["y"] + rect["dy"] / 2
+        font_size = max(6, min(10, rect["dx"] / 6))
+        ax.text(cx, cy + 1.6, item["name"], ha="center", va="center",
+                fontsize=font_size, color=text_color, fontweight="bold")
+        ax.text(cx, cy - 1.6, f"{item['pct']:+.1f}%", ha="center", va="center",
+                fontsize=font_size * 0.9, color=text_color)
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.axis("off")
+    ax.set_title(title)
     fig.tight_layout()
 
     CHARTS_DIR.mkdir(parents=True, exist_ok=True)
-    filename = "performance_heatmap.png"
+    filename = f"treemap_{market}.png"
     fig.savefig(CHARTS_DIR / filename, dpi=120)
     plt.close(fig)
     return filename
@@ -170,7 +163,8 @@ def main() -> None:
                 }
             )
 
-    heatmap_filename = render_performance_heatmap()
+    jp_treemap = render_stock_treemap("japan", JP_HEATMAP_STOCKS, "日本 銘柄別ヒートマップ(直近1日)")
+    us_treemap = render_stock_treemap("us", US_HEATMAP_STOCKS, "アメリカ 銘柄別ヒートマップ(直近1日)")
 
     alerts = compute_alerts()
     analysis = db.get_latest_analysis()
@@ -184,7 +178,8 @@ def main() -> None:
         charts=charts,
         posts=posts,
         alerts=alerts,
-        heatmap=f"charts/{heatmap_filename}" if heatmap_filename else None,
+        jp_treemap=f"charts/{jp_treemap}" if jp_treemap else None,
+        us_treemap=f"charts/{us_treemap}" if us_treemap else None,
     )
 
     output_path = OUTPUT_DIR / "index.html"

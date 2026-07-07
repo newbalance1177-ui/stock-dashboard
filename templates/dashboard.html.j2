@@ -47,10 +47,17 @@
     {% endif %}
   </div>
 
-  {% if heatmap %}
+  {% if jp_treemap %}
   <div class="card chart">
-    <h2>日本・アメリカの直近の実績</h2>
-    <img src="{{ heatmap }}" alt="日本・アメリカ 直近の騰落率ヒートマップ">
+    <h2>日本 銘柄別ヒートマップ(直近1日)</h2>
+    <img src="{{ jp_treemap }}" alt="日本 銘柄別ヒートマップ">
+  </div>
+  {% endif %}
+
+  {% if us_treemap %}
+  <div class="card chart">
+    <h2>アメリカ 銘柄別ヒートマップ(直近1日)</h2>
+    <img src="{{ us_treemap }}" alt="アメリカ 銘柄別ヒートマップ">
   </div>
   {% endif %}
 
