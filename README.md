@@ -30,6 +30,13 @@ python deploy.py           # data/ と output/ の変更を git commit & push
 ```
 
 日次実行する場合は、上記5コマンドを順に実行するスケジューラ(cron / GitHub Actions 等)を設定する。
+このリポジトリでは `.github/workflows/daily.yml` で毎朝06:30 JSTに自動実行される。
+
+### 任意のタイミングで実行したい場合
+
+- **手元のPCから**: `python run_all.py` で5工程をまとめて1コマンドで実行できる
+- **GitHubから**: リポジトリの Actions タブ →「Daily Dashboard Update」→「Run workflow」で
+  スケジュール時刻を待たずに手動実行できる
 
 ## 構成
 
@@ -38,6 +45,7 @@ python deploy.py           # data/ と output/ の変更を git commit & push
 - `analyze.py` — 収集データを Claude API に渡して分析コメント生成
 - `build_dashboard.py` — グラフ生成 + 静的HTML出力(`output/index.html`)
 - `deploy.py` — git commit & push
+- `run_all.py` — 上記5つを1コマンドでまとめて実行(任意のタイミングでの手動更新用)
 - `config.py` — 環境変数・設定の一元管理
 - `db.py` — SQLite(`data/dashboard.db`)アクセスヘルパー
 - `templates/dashboard.html.j2` — ダッシュボードのHTMLテンプレート
