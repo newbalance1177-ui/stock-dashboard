@@ -39,7 +39,7 @@ def push_with_retry() -> None:
 
 def main() -> None:
     try:
-        run("git", "add", "data", "output")
+        run("git", "add", "data", "docs")
 
         if not has_changes():
             print("[deploy] no changes to commit")
