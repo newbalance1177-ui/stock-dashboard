@@ -15,11 +15,25 @@
   .posts { list-style: none; padding: 0; }
   .posts li { padding: 0.6rem 0; border-bottom: 1px solid #eee; }
   .posts a { color: #666; font-size: 0.8rem; text-decoration: none; }
+  .alert-box { background: #fdecea; border: 2px solid #d32f2f; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+  .alert-box .alert-title { color: #d32f2f; font-weight: bold; font-size: 1.05rem; margin: 0 0 0.3rem; }
+  .alert-box .alert-detail { margin: 0; font-size: 0.95rem; }
+  .alert-box .alert-value { font-size: 1.4rem; font-weight: bold; }
 </style>
 </head>
 <body>
   <h1>マーケットダッシュボード</h1>
   <p class="meta">生成日時: {{ generated_at }}</p>
+
+  {% for alert in alerts %}
+  <div class="alert-box">
+    <p class="alert-title">⚠ {{ alert.label }}が{{ alert.message }}に達しています</p>
+    <p class="alert-detail">
+      現在値: <span class="alert-value">{{ "%.2f"|format(alert.value) }}</span>
+      (基準: {{ alert.threshold }} / {{ alert.date }}時点)
+    </p>
+  </div>
+  {% endfor %}
 
   <div class="card">
     <h2>分析コメント</h2>

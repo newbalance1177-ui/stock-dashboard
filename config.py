@@ -30,6 +30,20 @@ MARKET_TICKERS = {
     "usdjpy": "JPY=X",
 }
 
+# ダッシュボード・分析プロンプトで表示する全指標の名称(yfinance以外のnikkei_vi/fear_greedも含む)
+INDICATOR_LABELS = {
+    "nikkei225": "日経平均株価",
+    "usdjpy": "ドル円(USD/JPY)",
+    "nikkei_vi": "日経平均VI",
+    "fear_greed": "Fear & Greed指数",
+}
+
+# 警戒アラートのしきい値。type: "below"(以下で警戒) / "above"(以上で警戒)
+ALERT_THRESHOLDS = {
+    "fear_greed": {"type": "below", "value": 20, "label": "極度の恐怖(Extreme Fear)"},
+    "nikkei_vi": {"type": "above", "value": 50, "label": "急上昇・警戒水準"},
+}
+
 # --- Claude API ---
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8")

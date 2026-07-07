@@ -5,13 +5,15 @@ from datetime import date
 from anthropic import Anthropic
 
 import db
-from config import ANTHROPIC_MODEL, MARKET_TICKERS
+from config import ALERT_THRESHOLDS, ANTHROPIC_MODEL, INDICATOR_LABELS
 
 SYSTEM_PROMPT = (
     "あなたは日本株・為替市場に詳しい金融アナリストです。"
-    "与えられたXの投稿と市場データ(日経平均・為替等)をもとに、"
+    "与えられたXの投稿と市場データ(日経平均・為替・日経平均VI・Fear & Greed指数等)をもとに、"
     "今日の市場動向についての簡潔な分析コメントを日本語で作成してください。"
     "具体的な数値に触れつつ、投稿内容と市場の動きに関連が見られる場合はその関連性にも言及してください。"
+    "特に、Fear & Greed指数が20以下(極度の恐怖)の場合や、日経平均VIが50以上(急上昇・警戒水準)の場合は、"
+    "その旨を明確に指摘してください。"
     "断定的な投資助言は避け、客観的な観察に留めてください。"
 )
 
@@ -26,9 +28,13 @@ def build_prompt() -> str:
         lines.append("(該当する投稿はありません)")
 
     lines.append("\n# 市場データ(直近30日、日付: 終値)")
-    for name in MARKET_TICKERS:
-        lines.append(f"\n## {name}")
-        rows = db.get_recent_market(name, days=30)
+    for symbol, label in INDICATOR_LABELS.items():
+        lines.append(f"\n## {label}")
+        rule = ALERT_THRESHOLDS.get(symbol)
+        if rule:
+            direction = "以下" if rule["type"] == "below" else "以上"
+            lines.append(f"(警戒ライン: {rule['value']}{direction}で「{rule['label']}」)")
+        rows = db.get_recent_market(symbol, days=30)
         if rows:
             for row in rows:
                 lines.append(f"- {row['date']}: {row['close']}")
