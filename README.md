@@ -52,6 +52,11 @@ python deploy.py           # data/ と docs/ の変更を git commit & push
 - `data/` — SQLiteデータベース格納先
 - `docs/` — 生成されたダッシュボード(HTML・グラフ画像。GitHub Pagesの公開元)
 
+## 調査・記憶ワークフロー
+
+NotebookLM（調査）・Claude Code（実装指示）・Obsidian（記憶の蓄積）を役割分担して使う運用については
+[WORKFLOW.md](WORKFLOW.md) を参照。
+
 ## スマホからの閲覧
 
 GitHub Pages(Settings → Pages → Source: main branch / docs フォルダ)を有効にすると、

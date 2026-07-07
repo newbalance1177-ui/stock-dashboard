@@ -21,7 +21,7 @@ def is_triggered(rule: dict, value: float) -> bool:
     return value >= rule["value"]
 
 
-def render_chart(symbol: str) -> str | None:
+def render_chart(symbol: str) -> dict | None:
     rows = db.get_recent_market(symbol, days=30)
     if not rows:
         return None
@@ -47,7 +47,12 @@ def render_chart(symbol: str) -> str | None:
     filename = f"{symbol}.png"
     fig.savefig(CHARTS_DIR / filename, dpi=120)
     plt.close(fig)
-    return filename
+
+    return {
+        "filename": filename,
+        "latest_value": closes[-1],
+        "latest_date": dates[-1],
+    }
 
 
 def compute_alerts() -> list[dict]:
@@ -75,9 +80,16 @@ def main() -> None:
 
     charts = []
     for symbol, label in INDICATOR_LABELS.items():
-        filename = render_chart(symbol)
-        if filename:
-            charts.append({"title": label, "filename": f"charts/{filename}"})
+        result = render_chart(symbol)
+        if result:
+            charts.append(
+                {
+                    "title": label,
+                    "filename": f"charts/{result['filename']}",
+                    "latest_value": result["latest_value"],
+                    "latest_date": result["latest_date"],
+                }
+            )
 
     alerts = compute_alerts()
     analysis = db.get_latest_analysis()

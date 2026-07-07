@@ -19,6 +19,8 @@
   .alert-box .alert-title { color: #d32f2f; font-weight: bold; font-size: 1.05rem; margin: 0 0 0.3rem; }
   .alert-box .alert-detail { margin: 0; font-size: 0.95rem; }
   .alert-box .alert-value { font-size: 1.4rem; font-weight: bold; }
+  .latest-value { margin: 0 0 0.8rem; font-size: 0.95rem; }
+  .latest-value .value { font-size: 1.7rem; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -48,6 +50,10 @@
   {% for chart in charts %}
   <div class="card chart">
     <h2>{{ chart.title }}</h2>
+    <p class="latest-value">
+      現在値: <span class="value">{{ "{:,.2f}".format(chart.latest_value) }}</span>
+      <span class="meta">({{ chart.latest_date }}時点)</span>
+    </p>
     <img src="{{ chart.filename }}" alt="{{ chart.title }}">
   </div>
   {% endfor %}
