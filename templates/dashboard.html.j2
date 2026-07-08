@@ -5,39 +5,159 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>マーケットダッシュボード - {{ generated_at }}</title>
 <style>
-  body { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; background: #f7f7f8; color: #1a1a1a; }
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
-  .meta { color: #666; font-size: 0.85rem; }
-  .card { background: #fff; border-radius: 8px; padding: 1.2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
-  .chart img { max-width: 100%; height: auto; }
-  .comment { white-space: pre-wrap; line-height: 1.7; }
-  .posts { list-style: none; padding: 0; }
-  .posts li { padding: 0.6rem 0; border-bottom: 1px solid #eee; }
-  .posts a { color: #666; font-size: 0.8rem; text-decoration: none; }
-  .alert-box { background: #fdecea; border: 2px solid #d32f2f; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
-  .alert-box .alert-title { color: #d32f2f; font-weight: bold; font-size: 1.05rem; margin: 0 0 0.3rem; }
-  .alert-box .alert-detail { margin: 0; font-size: 0.95rem; }
-  .alert-box .alert-value { font-size: 1.4rem; font-weight: bold; }
-  .latest-value { margin: 0 0 0.8rem; font-size: 0.95rem; }
-  .latest-value .value { font-size: 1.7rem; font-weight: bold; }
-  .theme-block { margin-bottom: 1.5rem; }
+  :root {
+    --page-bg: #f7f7f5;
+    --surface: #ffffff;
+    --ink-primary: #0b0b0b;
+    --ink-secondary: #52514e;
+    --ink-muted: #898781;
+    --border: rgba(11,11,11,0.08);
+    --hairline: #e7e6e1;
+    --up: #d03b3b;
+    --up-bg: rgba(208,59,59,0.09);
+    --down: #2a6fd6;
+    --down-bg: rgba(42,111,214,0.09);
+    --critical-bg: rgba(208,59,59,0.06);
+    --shadow: 0 1px 2px rgba(11,11,11,0.03), 0 6px 20px rgba(11,11,11,0.05);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Segoe UI", sans-serif;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 1rem 3rem;
+    background: var(--page-bg);
+    color: var(--ink-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header.top {
+    padding: 1.6rem 0 1.2rem;
+    margin-bottom: 1.25rem;
+  }
+  header.top h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.25rem;
+  }
+  header.top .meta { margin: 0; }
+
+  h2 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  h3 { margin: 0; }
+
+  .meta { color: var(--ink-muted); font-size: 0.82rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.3rem 1.4rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.25rem;
+  }
+  .card.chart img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+  }
+
+  .comment { white-space: pre-wrap; line-height: 1.75; color: var(--ink-primary); font-size: 0.95rem; }
+
+  .posts { list-style: none; padding: 0; margin: 0; }
+  .posts li {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .posts li:last-child { border-bottom: none; padding-bottom: 0; }
+  .posts .handle { font-weight: 600; color: var(--ink-primary); }
+  .posts a {
+    color: var(--ink-muted);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+  .posts a:hover { color: var(--ink-secondary); text-decoration: underline; }
+
+  .alert-box {
+    background: var(--critical-bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--up);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .alert-box .alert-title {
+    color: var(--up);
+    font-weight: 700;
+    font-size: 0.98rem;
+    margin: 0 0 0.35rem;
+  }
+  .alert-box .alert-detail { margin: 0; font-size: 0.9rem; color: var(--ink-secondary); }
+  .alert-box .alert-value { font-size: 1.3rem; font-weight: 700; color: var(--ink-primary); font-variant-numeric: tabular-nums; }
+
+  .latest-value { margin: 0 0 1rem; font-size: 0.9rem; color: var(--ink-secondary); }
+  .latest-value .value { font-size: 1.7rem; font-weight: 700; color: var(--ink-primary); font-variant-numeric: tabular-nums; }
+
+  .theme-block { margin-bottom: 1.4rem; }
   .theme-block:last-child { margin-bottom: 0; }
-  .theme-block h3 { font-size: 1rem; margin: 0 0 0.5rem; }
+  .theme-block h3 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.5rem;
+  }
   .theme-table { width: 100%; border-collapse: collapse; }
-  .theme-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; font-size: 0.9rem; vertical-align: middle; }
+  .theme-table td {
+    padding: 0.55rem 0.4rem;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 0.9rem;
+    vertical-align: middle;
+  }
   .theme-table tr:last-child td { border-bottom: none; }
   .company-name { font-weight: 600; white-space: nowrap; }
   .sparkline-cell img { height: 22px; display: block; }
-  .price-cell { text-align: right; white-space: nowrap; }
-  .change-cell { text-align: right; font-weight: bold; white-space: nowrap; }
-  .change-cell.up { color: #d32f2f; }
-  .change-cell.down { color: #1565c0; }
+  .price-cell { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-secondary); }
+  .change-cell { text-align: right; white-space: nowrap; }
+  .change-badge {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .change-badge.up { color: var(--up); background: var(--up-bg); }
+  .change-badge.down { color: var(--down); background: var(--down-bg); }
+
+  footer.bottom {
+    text-align: center;
+    padding-top: 1rem;
+    color: var(--ink-muted);
+    font-size: 0.78rem;
+  }
 </style>
 </head>
 <body>
-  <h1>マーケットダッシュボード</h1>
-  <p class="meta">生成日時: {{ generated_at }}</p>
+  <header class="top">
+    <h1>マーケットダッシュボード</h1>
+    <p class="meta">生成日時: {{ generated_at }}</p>
+  </header>
 
   {% for alert in alerts %}
   <div class="alert-box">
@@ -87,8 +207,10 @@
             {% if company.sparkline %}<img src="{{ company.sparkline }}" alt="{{ company.name }}の推移">{% endif %}
           </td>
           <td class="price-cell">{{ "{:,.0f}".format(company.price) }}円</td>
-          <td class="change-cell {{ 'up' if company.pct_change >= 0 else 'down' }}">
-            {{ "%+.2f"|format(company.pct_change) }}%
+          <td class="change-cell">
+            <span class="change-badge {{ 'up' if company.pct_change >= 0 else 'down' }}">
+              {{ "%+.2f"|format(company.pct_change) }}%
+            </span>
           </td>
         </tr>
         {% endfor %}
@@ -115,7 +237,7 @@
     <ul class="posts">
       {% for post in posts %}
       <li>
-        <div>@{{ post.username }}: {{ post.text }}</div>
+        <div><span class="handle">@{{ post.username }}</span> {{ post.text }}</div>
         <a href="{{ post.url }}" target="_blank" rel="noopener">{{ post.created_at }}</a>
       </li>
       {% endfor %}
@@ -124,5 +246,7 @@
     <p>投稿がありません。</p>
     {% endif %}
   </div>
+
+  <footer class="bottom">stock-dashboard · {{ generated_at }} 更新</footer>
 </body>
 </html>
