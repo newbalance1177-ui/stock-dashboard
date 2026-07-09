@@ -2,6 +2,7 @@
 import sys
 from datetime import datetime, timezone
 
+import pandas as pd
 import requests
 import yfinance as yf
 
@@ -34,7 +35,12 @@ def collect_symbol(name: str, ticker: str, period: str = "3mo") -> int:
         if close is None:
             continue
         db.upsert_market_point(
-            symbol=name, date=date.strftime("%Y-%m-%d"), close=float(close)
+            symbol=name,
+            date=date.strftime("%Y-%m-%d"),
+            close=float(close),
+            open_=float(row["Open"]) if row.get("Open") is not None else None,
+            high=float(row["High"]) if row.get("High") is not None else None,
+            low=float(row["Low"]) if row.get("Low") is not None else None,
         )
         count += 1
     return count
@@ -81,19 +87,38 @@ def collect_fear_greed(days: int = 90) -> int:
     return count
 
 
-def collect_stock_heatmap(market: str, stocks: list[tuple[str, str, float]]) -> int:
-    """複数銘柄の株価を一括取得(yf.downloadでまとめて1回)し、直近1日の変化率をDBへ保存する。"""
+def _upsert_ohlc_history(ticker: str, frame) -> int:
+    """yf.downloadで取得した1銘柄分のOHLC DataFrameをmarket_dataへ保存する。"""
+    frame = frame.dropna(subset=["Close"])
+    count = 0
+    for date, row in frame.iterrows():
+        db.upsert_market_point(
+            symbol=ticker,
+            date=date.strftime("%Y-%m-%d"),
+            close=float(row["Close"]),
+            open_=float(row["Open"]) if pd.notna(row.get("Open")) else None,
+            high=float(row["High"]) if pd.notna(row.get("High")) else None,
+            low=float(row["Low"]) if pd.notna(row.get("Low")) else None,
+        )
+        count += 1
+    return count
+
+
+def collect_stock_heatmap(market: str, stocks: list[tuple[str, str, float]], period: str = "3mo") -> int:
+    """複数銘柄の株価四本値を一括取得(yf.downloadでまとめて1回)し、
+    market_dataへの推移保存と、直近1日の変化率のstock_changesへの保存を両方行う。"""
     tickers = [ticker for ticker, _name, _weight in stocks]
-    data = yf.download(
-        tickers, period="5d", group_by="ticker", progress=False, threads=True
-    )
+    data = yf.download(tickers, period=period, group_by="ticker", progress=False, threads=True)
 
     count = 0
     for ticker, name, _weight in stocks:
         try:
-            closes = data[ticker]["Close"].dropna()
+            frame = data[ticker]
         except (KeyError, TypeError):
             continue
+        count += _upsert_ohlc_history(ticker, frame)
+
+        closes = frame["Close"].dropna()
         if len(closes) < 2:
             continue
         latest_date = closes.index[-1].strftime("%Y-%m-%d")
@@ -105,24 +130,21 @@ def collect_stock_heatmap(market: str, stocks: list[tuple[str, str, float]]) -> 
         db.upsert_stock_change(
             ticker=ticker, market=market, name=name, date=latest_date, pct_change=pct_change
         )
-        count += 1
     return count
 
 
 def collect_theme_stocks(period: str = "3mo") -> int:
-    """注目テーマ株(THEME_STOCKS)の株価推移を一括取得し、market_dataへ保存する(symbol=ティッカー)。"""
+    """注目テーマ株(THEME_STOCKS)の株価推移(四本値)を一括取得し、market_dataへ保存する(symbol=ティッカー)。"""
     tickers = sorted({ticker for stocks in THEME_STOCKS.values() for ticker, _name in stocks})
     data = yf.download(tickers, period=period, group_by="ticker", progress=False, threads=True)
 
     count = 0
     for ticker in tickers:
         try:
-            closes = data[ticker]["Close"].dropna()
+            frame = data[ticker]
         except (KeyError, TypeError):
             continue
-        for date, close in closes.items():
-            db.upsert_market_point(symbol=ticker, date=date.strftime("%Y-%m-%d"), close=float(close))
-            count += 1
+        count += _upsert_ohlc_history(ticker, frame)
     return count
 
 

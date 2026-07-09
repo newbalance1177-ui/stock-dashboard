@@ -145,6 +145,30 @@
   .change-badge.up { color: var(--up); background: var(--up-bg); }
   .change-badge.down { color: var(--down); background: var(--down-bg); }
 
+  .pattern-list { list-style: none; padding: 0; margin: 0; }
+  .pattern-list li {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .pattern-list li:last-child { border-bottom: none; padding-bottom: 0; }
+  .pattern-name { font-weight: 700; white-space: nowrap; }
+  .pattern-tag {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    color: #5b3fd1;
+    background: rgba(91,63,209,0.09);
+    white-space: nowrap;
+  }
+  .pattern-detail { flex-basis: 100%; color: var(--ink-secondary); font-size: 0.85rem; margin: 0; }
+  .pattern-date { color: var(--ink-muted); font-size: 0.78rem; }
+
   footer.bottom {
     text-align: center;
     padding-top: 1rem;
@@ -176,6 +200,24 @@
       <p class="comment">{{ analysis.comment }}</p>
     {% else %}
       <p>まだ分析結果がありません。analyze.py を実行してください。</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>本日のテクニカルパターン検出</h2>
+    {% if pattern_alerts %}
+    <ul class="pattern-list">
+      {% for item in pattern_alerts %}
+      <li>
+        <span class="pattern-name">{{ item.name }}</span>
+        <span class="pattern-tag">{{ item.pattern }}</span>
+        <span class="pattern-date">{{ item.date }}時点</span>
+        <p class="pattern-detail">{{ item.detail }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="meta">本日該当するパターンはありません。</p>
     {% endif %}
   </div>
 

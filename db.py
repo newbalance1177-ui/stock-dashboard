@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS x_fetch_state (
 CREATE TABLE IF NOT EXISTS market_data (
     symbol TEXT NOT NULL,
     date TEXT NOT NULL,
+    open REAL,
+    high REAL,
+    low REAL,
     close REAL,
     fetched_at TEXT NOT NULL,
     PRIMARY KEY (symbol, date)
@@ -66,6 +69,15 @@ def get_connection():
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """既存DBに後から追加した列を反映する(CREATE TABLE IF NOT EXISTSでは列は追加されないため)。"""
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(market_data)")}
+    for column in ("open", "high", "low"):
+        if column not in existing:
+            conn.execute(f"ALTER TABLE market_data ADD COLUMN {column} REAL")
 
 
 # --- x_posts / x_fetch_state ---
@@ -114,14 +126,24 @@ def get_recent_posts(days: int = 7):
 
 # --- market_data ---
 
-def upsert_market_point(symbol: str, date: str, close: float) -> None:
+def upsert_market_point(
+    symbol: str,
+    date: str,
+    close: float,
+    open_: float | None = None,
+    high: float | None = None,
+    low: float | None = None,
+) -> None:
     with get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO market_data (symbol, date, close, fetched_at) VALUES (?, ?, ?, ?)
-            ON CONFLICT(symbol, date) DO UPDATE SET close = excluded.close, fetched_at = excluded.fetched_at
+            INSERT INTO market_data (symbol, date, open, high, low, close, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(symbol, date) DO UPDATE SET
+                open = excluded.open, high = excluded.high, low = excluded.low,
+                close = excluded.close, fetched_at = excluded.fetched_at
             """,
-            (symbol, date, close, now_iso()),
+            (symbol, date, open_, high, low, close, now_iso()),
         )
 
 
