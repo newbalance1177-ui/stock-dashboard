@@ -40,6 +40,29 @@ def _sma(values: list[float], period: int) -> float | None:
     return sum(values[-period:]) / period
 
 
+def _stddev(values: list[float], period: int) -> float | None:
+    if len(values) < period:
+        return None
+    window = values[-period:]
+    mean = sum(window) / period
+    variance = sum((v - mean) ** 2 for v in window) / period
+    return variance ** 0.5
+
+
+def _rci(values: list[float], period: int) -> float | None:
+    """順位相関指数(RCI)。-100(売られすぎ)〜+100(買われすぎ)で推移する。"""
+    if len(values) < period:
+        return None
+    window = values[-period:]
+    date_ranks = list(range(period, 0, -1))  # 最新の日を1位とする(直近ほど小さい順位)
+    price_order = sorted(range(period), key=lambda i: window[i], reverse=True)
+    price_ranks = [0] * period
+    for rank, idx in enumerate(price_order, start=1):
+        price_ranks[idx] = rank
+    d_squared_sum = sum((d - p) ** 2 for d, p in zip(date_ranks, price_ranks))
+    return (1 - 6 * d_squared_sum / (period * (period**2 - 1))) * 100
+
+
 def _zone(rows: list[Row], lookback: int = 20) -> str:
     """直近値が過去lookback日の中でどのゾーンにあるかを大まかに判定する。"""
     window = rows[-lookback:]
@@ -239,7 +262,7 @@ def detect_gap_up_two_red(rows: list[Row]) -> dict | None:
     return {"pattern": "上放れ並び赤", "detail": "窓を開けて急騰した後、ほぼ同じ長さの陽線が2本連続。上昇の本気度を示す強いサイン。"}
 
 
-def detect_perfect_order(rows: list[Row], short: int = 5, mid: int = 20, long: int = 60, slope_lookback: int = 5) -> dict | None:
+def detect_perfect_order(rows: list[Row], short: int = 5, mid: int = 25, long: int = 100, slope_lookback: int = 5) -> dict | None:
     """指標10: パンパカパン(パーフェクトオーダー)。短期・中期・長期の移動平均線が
     上から順に並び、すべて右肩上がりになっている状態(最強の上昇トレンドのサイン)。"""
     closes = [r["close"] for r in rows]
@@ -263,6 +286,84 @@ def detect_perfect_order(rows: list[Row], short: int = 5, mid: int = 20, long: i
     return None
 
 
+def detect_oversold_bounce(rows: list[Row], drop_pct: float = 2.5, lookback: int = 3) -> dict | None:
+    """買いの条件①: 材料なしの前日比-2.5%以上の急落からの反発を狙う逆張りシグナル。
+    (急落した瞬間ではなく、そこから反発を確認した時点で検出する)"""
+    if len(rows) < lookback + 2:
+        return None
+    for i in range(len(rows) - 1, max(len(rows) - 1 - lookback, 0), -1):
+        prev, drop_day = rows[i - 1], rows[i]
+        if prev["close"] <= 0:
+            continue
+        change_pct = (drop_day["close"] - prev["close"]) / prev["close"] * 100
+        if change_pct <= -drop_pct:
+            latest = rows[-1]
+            if latest["close"] > drop_day["close"]:
+                return {
+                    "pattern": "急落からの反発",
+                    "detail": f"{drop_day['date']}に材料なき前日比{change_pct:+.1f}%の急落。"
+                              "そこから反発しつつあり、逆張りの買い場となる可能性(ニュースの有無は要確認)。",
+                }
+            return None
+    return None
+
+
+def detect_ma25_deviation_bounce(rows: list[Row], period: int = 25, deviation_pct: float = 5.0) -> dict | None:
+    """買いの条件②: 25日移動平均線(適正価格の目安)から大きく下に乖離した後の反発。"""
+    closes = [r["close"] for r in rows]
+    ma = _sma(closes, period)
+    if ma is None or ma <= 0:
+        return None
+    latest = rows[-1]
+    deviation = (latest["close"] - ma) / ma * 100
+    if deviation > -deviation_pct:
+        return None
+    if not _is_bullish(latest):  # 反発(陽線)を確認
+        return None
+    return {
+        "pattern": "25日線からの乖離+反発",
+        "detail": f"25日移動平均線から{deviation:+.1f}%乖離した後、反発の陽線。"
+                  "「適正価格」への回帰(引力)が期待される逆張りポイント。",
+    }
+
+
+def detect_bollinger_oversold(rows: list[Row], period: int = 25) -> dict | None:
+    """買いの条件③: ボリンジャーバンド-2σ/-3σまで売られすぎた状態(統計的な下落の限界点)。"""
+    closes = [r["close"] for r in rows]
+    ma = _sma(closes, period)
+    sd = _stddev(closes, period)
+    if ma is None or sd is None or sd <= 0:
+        return None
+    latest = rows[-1]
+    lower_2sigma = ma - 2 * sd
+    lower_3sigma = ma - 3 * sd
+    if latest["low"] <= lower_3sigma:
+        return {
+            "pattern": "ボリンジャー-3σ到達",
+            "detail": "株価が-3σ(統計上99.7%の範囲の外)まで到達。極限の売られすぎで、"
+                      "移動平均線への回帰(反発)が高確率で期待される水準。",
+        }
+    if latest["low"] <= lower_2sigma:
+        return {
+            "pattern": "ボリンジャー-2σ到達",
+            "detail": "株価が-2σ(統計上95.4%の範囲の外)まで到達。売られすぎの限界点に近く、"
+                      "反発の可能性が高まっている水準。",
+        }
+    return None
+
+
+def detect_rci_oversold(rows: list[Row], period: int = 9, threshold: float = -90.0) -> dict | None:
+    """買いの条件④: RCI(順位相関指数)が-90%以下の「売られすぎの極致」。"""
+    closes = [r["close"] for r in rows]
+    rci = _rci(closes, period)
+    if rci is None or rci > threshold:
+        return None
+    return {
+        "pattern": "RCI売られすぎ",
+        "detail": f"RCI({period}日)が{rci:.1f}%と-90%以下の売られすぎの極致。高確率でのリバウンドが期待される水準。",
+    }
+
+
 # 新しいパターンを追加する場合はここに関数を足すだけでよい
 PATTERN_DETECTORS = [
     detect_doji,
@@ -275,6 +376,10 @@ PATTERN_DETECTORS = [
     detect_gap_down_two_black,
     detect_gap_up_two_red,
     detect_perfect_order,
+    detect_oversold_bounce,
+    detect_ma25_deviation_bounce,
+    detect_bollinger_oversold,
+    detect_rci_oversold,
 ]
 
 
