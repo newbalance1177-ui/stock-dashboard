@@ -30,6 +30,16 @@ def _is_bullish(row: Row) -> bool:
     return row["close"] > row["open"]
 
 
+def _is_bearish(row: Row) -> bool:
+    return row["close"] < row["open"]
+
+
+def _sma(values: list[float], period: int) -> float | None:
+    if len(values) < period:
+        return None
+    return sum(values[-period:]) / period
+
+
 def _zone(rows: list[Row], lookback: int = 20) -> str:
     """直近値が過去lookback日の中でどのゾーンにあるかを大まかに判定する。"""
     window = rows[-lookback:]
@@ -176,19 +186,80 @@ def detect_double_bottom_top(rows: list[Row], lookback: int = 40) -> dict | None
     return None
 
 
-def detect_island_reversal(rows: list[Row]) -> dict | None:
-    """指標6: アイランドリバーサル。窓(ギャップ)で前後から切り離された孤立したローソク足。"""
+def detect_island_top(rows: list[Row]) -> dict | None:
+    """指標6: アイランドリバーサル(天井)。窓を開けて上に孤立→逆方向へ窓を開けて急落する形。"""
     if len(rows) < 3:
         return None
     before, island, after = rows[-3], rows[-2], rows[-1]
-
-    # 天井のアイランドリバーサル: 窓を開けて上に孤立→窓を開けて下に戻る
     if island["low"] > before["high"] and after["high"] < island["low"]:
         return {"pattern": "アイランドリバーサル(天井)", "detail": "窓開けで孤立した後、逆方向へ窓を開けて急落。天井のサイン。"}
+    return None
 
-    # 底のアイランドリバーサル: 窓を開けて下に孤立→窓を開けて上に戻る
+
+def detect_island_bottom(rows: list[Row]) -> dict | None:
+    """指標7: アイランドボトム。下落相場の底値圏で、窓を開けて下に孤立→逆方向へ窓を開けて急伸する形。"""
+    if len(rows) < 3:
+        return None
+    before, island, after = rows[-3], rows[-2], rows[-1]
     if island["high"] < before["low"] and after["low"] > island["high"]:
-        return {"pattern": "アイランドリバーサル(底)", "detail": "窓開けで孤立した後、逆方向へ窓を開けて急伸。底のサイン。"}
+        return {"pattern": "アイランドボトム", "detail": "窓開けで孤立した後、逆方向へ窓を開けて急伸。絶望の底からの反転(全力買いの合図)。"}
+    return None
+
+
+def detect_gap_down_two_black(rows: list[Row]) -> dict | None:
+    """指標8: 下放れ二本黒。窓を開けて下落し、その後2日連続の陰線が並ぶ形(下落継続の強い警戒サイン)。"""
+    if len(rows) < 3:
+        return None
+    before, day1, day2 = rows[-3], rows[-2], rows[-1]
+    if not (day1["high"] < before["low"]):  # 窓を開けて下落(ギャップダウン)
+        return None
+    if not (_is_bearish(day1) and _is_bearish(day2)):
+        return None
+    if not (day2["close"] < day1["close"]):  # 終値にかけてさらに売られ続けている
+        return None
+    return {"pattern": "下放れ二本黒", "detail": "窓を開けて急落した後、2日連続の陰線。「底なし沼」入りを警戒すべき暗黒のサイン。"}
+
+
+def detect_gap_up_two_red(rows: list[Row]) -> dict | None:
+    """指標9: 上放れ並び赤。窓を開けて急騰し、ほぼ同じ長さの陽線が2本並ぶ形(上昇継続の強いサイン)。"""
+    if len(rows) < 3:
+        return None
+    before, day1, day2 = rows[-3], rows[-2], rows[-1]
+    if not (day1["low"] > before["high"]):  # 窓を開けて上昇(ギャップアップ)
+        return None
+    if not (_is_bullish(day1) and _is_bullish(day2)):
+        return None
+    body1, body2 = _body(day1), _body(day2)
+    if body1 <= 0 or body2 <= 0:
+        return None
+    if abs(body1 - body2) / max(body1, body2) > 0.4:  # ほぼ同じ長さ
+        return None
+    if min(day1["low"], day2["low"]) <= before["high"]:  # 窓を埋めさせていない
+        return None
+    return {"pattern": "上放れ並び赤", "detail": "窓を開けて急騰した後、ほぼ同じ長さの陽線が2本連続。上昇の本気度を示す強いサイン。"}
+
+
+def detect_perfect_order(rows: list[Row], short: int = 5, mid: int = 20, long: int = 60, slope_lookback: int = 5) -> dict | None:
+    """指標10: パンパカパン(パーフェクトオーダー)。短期・中期・長期の移動平均線が
+    上から順に並び、すべて右肩上がりになっている状態(最強の上昇トレンドのサイン)。"""
+    closes = [r["close"] for r in rows]
+    if len(closes) < long + slope_lookback:
+        return None
+
+    short_now, short_past = _sma(closes, short), _sma(closes[:-slope_lookback], short)
+    mid_now, mid_past = _sma(closes, mid), _sma(closes[:-slope_lookback], mid)
+    long_now, long_past = _sma(closes, long), _sma(closes[:-slope_lookback], long)
+    if None in (short_now, short_past, mid_now, mid_past, long_now, long_past):
+        return None
+
+    perfect_order = short_now > mid_now > long_now
+    all_rising = short_now > short_past and mid_now > mid_past and long_now > long_past
+    if perfect_order and all_rising:
+        return {
+            "pattern": "パンパカパン(PPP)",
+            "detail": f"短期({short}日)>中期({mid}日)>長期({long}日)移動平均線が右肩上がりで並ぶ"
+                      "「パーフェクトオーダー」。最強クラスの上昇トレンドのサイン。",
+        }
     return None
 
 
@@ -199,7 +270,11 @@ PATTERN_DETECTORS = [
     detect_harami,
     detect_engulfing,
     detect_double_bottom_top,
-    detect_island_reversal,
+    detect_island_top,
+    detect_island_bottom,
+    detect_gap_down_two_black,
+    detect_gap_up_two_red,
+    detect_perfect_order,
 ]
 
 

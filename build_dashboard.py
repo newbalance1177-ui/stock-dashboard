@@ -180,7 +180,7 @@ def build_theme_data() -> list[dict]:
     return themes
 
 
-def scan_technical_patterns(days: int = 60) -> list[dict]:
+def scan_technical_patterns(days: int = 90) -> list[dict]:
     """全対象銘柄にローソク足パターン検出をかけ、直近で該当したものを一覧で返す。
     四本値(OHLC)が無い指標(日経平均VI・Fear&Greed指数)は対象外。"""
     targets: dict[str, str] = {
