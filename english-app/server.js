@@ -31,6 +31,7 @@ async function callClaude(system, userText, maxTokens = 400) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: maxTokens,
+      thinking: { type: 'disabled' },
       system,
       messages: [{ role: 'user', content: userText }]
     })
@@ -40,7 +41,8 @@ async function callClaude(system, userText, maxTokens = 400) {
     throw new Error(`Claude API error ${res.status}: ${errText}`);
   }
   const data = await res.json();
-  return data.content?.[0]?.text ?? '';
+  const textBlock = data.content?.find((block) => block.type === 'text');
+  return textBlock?.text ?? '';
 }
 
 function extractJson(text) {
