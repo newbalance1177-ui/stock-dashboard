@@ -52,6 +52,8 @@ function extractJson(text) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/healthz', (_req, res) => res.status(200).send('ok'));
+
 app.post('/api/next-line', async (req, res) => {
   try {
     const { level = 1, history = [] } = req.body;

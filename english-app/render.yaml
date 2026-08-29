@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: buddy-english
+    env: node
+    plan: free
+    rootDir: english-app
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false

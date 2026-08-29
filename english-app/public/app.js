@@ -255,5 +255,9 @@ refs.levelMapBtn.addEventListener('click', () => {
 refs.closeLevelMap.addEventListener('click', () => refs.levelMap.classList.add('hidden'));
 refs.closeSetup.addEventListener('click', () => refs.setupWarning.classList.add('hidden'));
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
 renderStats();
 askBuddy();
