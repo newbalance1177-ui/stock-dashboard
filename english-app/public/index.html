@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Buddy English</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">🗽 Buddy English</div>
+  <div class="stats">
+    <button id="levelMapBtn" class="chip">Lv.<span id="levelNum">1</span> ▸</button>
+    <div class="xpbar"><div id="xpFill" class="xpfill"></div></div>
+    <div class="streak">🔥 <span id="streakNum">0</span></div>
+  </div>
+</header>
+
+<main id="gameScreen" class="stage">
+  <div class="avatar-wrap">
+    <div id="avatar" class="avatar">🐻</div>
+    <div id="bubble" class="bubble hidden">
+      <p id="subtitleEn" class="subtitle-en"></p>
+      <p id="subtitleJa" class="subtitle-ja"></p>
+    </div>
+  </div>
+
+  <div id="tipBanner" class="tip hidden">💡 <span id="tipText"></span></div>
+
+  <div id="feedbackCard" class="feedback hidden">
+    <div class="fb-row"><span class="fb-label">聞こえた発音</span><span id="fbHeard"></span></div>
+    <div class="fb-row"><span class="fb-label">ネイティブならこう言う</span><span id="fbNatural"></span></div>
+    <div id="fbWordRow" class="fb-row hidden"><span class="fb-label">単語・文法</span><span id="fbWord"></span></div>
+    <div id="fbPronRow" class="fb-row hidden"><span class="fb-label">発音のコツ</span><span id="fbPron"></span></div>
+    <div class="fb-praise" id="fbPraise"></div>
+    <div class="fb-xp" id="fbXp"></div>
+  </div>
+
+  <div class="controls">
+    <button id="playBtn" class="ctrl-btn" title="もう一度聞く">🔊</button>
+    <button id="micBtn" class="mic-btn">🎤</button>
+    <button id="skipBtn" class="ctrl-btn" title="次へ">⏭</button>
+  </div>
+  <p id="status" class="status">マイクを押して話してみよう</p>
+</main>
+
+<div id="levelMap" class="overlay hidden">
+  <div class="overlay-card">
+    <h2>レベルを選ぶ</h2>
+    <div id="levelList" class="level-list"></div>
+    <button id="closeLevelMap" class="ctrl-btn wide">とじる</button>
+  </div>
+</div>
+
+<div id="setupWarning" class="overlay hidden">
+  <div class="overlay-card">
+    <h2>セットアップが必要です</h2>
+    <p id="setupMsg"></p>
+    <button id="closeSetup" class="ctrl-btn wide">わかった</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

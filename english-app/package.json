@@ -1,0 +1,15 @@
+{
+  "name": "buddy-english",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "毎日30分、ゲーム感覚で続けるアメリカ英語スピーキング/リスニング練習アプリ",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
