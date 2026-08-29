@@ -26,14 +26,12 @@ NotebookLMは無料でソースを大量に読み込ませて質問できるた�
 NotebookLMでの調査結果・自分の判断をもとに、Claude Codeへ実装を指示する。
 例: 新しい指標の収集追加、アラート条件の変更、ダッシュボードの表示改善など。
 
-## 3. 記憶（Obsidian）
+## 3. 記憶（Notion / Obsidian）
 
-vault: `C:\Users\Owner\OneDrive\Documents\ObsidianVault\株式ダッシュボード\`
+2026-08-29〜、スマホ連携を主にするため記憶先を Notion(primary) に切り替えた。運用の詳細・Notionページ一覧はリポジトリ直下の `CLAUDE.md` を参照。
 
-- `日次ノート/` — その日の調査ノート（NotebookLMの要点 + Claude Codeへの指示内容を記録）
-- `指標/` — 日経平均・為替・Fear&Greed指数・日経平均VI・X投稿分析などの恒久ノート。
-  日次ノートからリンクされ、傾向や相関が蓄積されていく
-- `Templates/調査ノートテンプレート.md` — 日次ノート作成用テンプレート
+- **Notion(primary)**: 日次ノート・指標ノートの新規記録先。「株式ダッシュボード」ページ配下に `日次ノート/` `指標/` `Templates/` を同じ構成で用意している
+- **Obsidian(アーカイブ)**: `C:\Users\Owner\OneDrive\Documents\ObsidianVault\株式ダッシュボード\` に過去ログとして残す。新規追記は行わない
 
 調査のたびに日次ノートを作り、関連する指標ノートにリンクを張ることで、
 NotebookLMでの調査結果とClaude Codeでの実装判断が指標ごとに関連付けられて蓄積される。
